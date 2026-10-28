@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Room Digital Twin</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div id="band" class="band safe"></div>
+
+<header class="top">
+  <div class="brand">
+    <h1>Smart room digital twin</h1>
+    <p id="modelTag">Procedural room</p>
+  </div>
+  <div class="chips">
+    <span id="chipSensor" class="chip off"><i></i><b id="chipSensorText">Sensors offline</b></span>
+    <span id="chipState" class="chip ok"><i></i><b id="chipStateText">Safe</b></span>
+  </div>
+</header>
+
+<main>
+  <section class="stage">
+    <canvas id="view"></canvas>
+    <div id="hint" class="hint"></div>
+    <div class="legend">
+      <span><i style="background:#fb923c"></i>Fire</span>
+      <span><i style="background:#b8c0cc"></i>Smoke</span>
+      <span><i style="background:#6ee78c"></i>Gas</span>
+      <span><i style="background:#3b8cf8"></i>Water</span>
+      <span><i style="background:#2dd4bf"></i>Live person</span>
+      <label id="ptsWrap" class="tog hidden"><input type="checkbox" id="ptsToggle" checked> Scan points</label>
+    </div>
+    <video id="liveVid" class="livevid" muted playsinline></video>
+    <div id="fatal" class="fatal">
+      <div>
+        <h2>three.min.js is missing</h2>
+        <p>The laptop has no internet while it is on the ESP32 Wi-Fi, so Three.js must be a local file.</p>
+        <p>Save <code>three.min.js</code> (r128) into <code>static/vendor/</code> and refresh. See README.md.</p>
+      </div>
+    </div>
+  </section>
+
+  <aside class="panel">
+
+    <section>
+      <h2>Live sensors</h2>
+      <div class="cards">
+        <div class="card"><span class="k">Temperature</span><span class="v"><b id="vTemp">--</b> °C</span><em id="sTemp" class="blue">waiting</em></div>
+        <div class="card"><span class="k">Humidity</span><span class="v"><b id="vHum">--</b> %</span><em id="sHum" class="blue">waiting</em></div>
+        <div class="card"><span class="k">Motion</span><span class="v"><b id="vPir">--</b></span><em id="sPir" class="blue">waiting</em></div>
+        <div class="card"><span class="k">Light</span><span class="v"><b id="vLdr">--</b></span><em id="sLdr" class="blue">waiting</em></div>
+        <div class="card wide"><span class="k">Air quality (gas)</span><span class="v"><b id="vGas">--</b></span><em id="sGas" class="blue">waiting</em></div>
+      </div>
+      <canvas id="graph" class="graph"></canvas>
+      <div class="legend small"><span><i style="background:#38bdf8"></i>Temp</span><span><i style="background:#4ade80"></i>Humidity</span><span><i style="background:#f97316"></i>Gas</span></div>
+      <div class="row">
+        <span>Sensor source</span>
+        <div class="seg" id="segMode"><button data-mode="esp32">ESP32</button><button data-mode="demo">Demo</button></div>
+      </div>
+      <div id="demoBox" class="row hidden">
+        <span>Test the trigger</span>
+        <div class="seg"><button id="spikeGas">Spike gas</button><button id="spikeTemp">Spike heat</button></div>
+      </div>
+      <label class="row check"><span>Start emergencies from sensor readings</span><input type="checkbox" id="auto" checked></label>
+    </section>
+
+    <section id="liveSec">
+      <h2>Live 3D reconstruction</h2>
+      <p class="note">Film the room and watch the 3D points appear in the view as you go. Walk slowly along the walls, keep the camera upright, and aim at textured surfaces, not blank walls.</p>
+      <div class="dims two">
+        <label>Longest wall (m)<input id="liveW" type="number" min="1" step="0.1" placeholder="e.g. 6.2"></label>
+        <label>COLMAP path (if needed)<input id="liveColmap" type="text" placeholder="C:\colmap\COLMAP.bat"></label>
+      </div>
+      <div class="trio two"><button id="liveCam" class="go">Start live camera</button><button id="liveFinish" disabled>Finish and measure</button></div>
+      <label class="file"><input type="file" id="liveFile" accept="video/*"><span>Or upload a video (it is rebuilt live in the view)</span></label>
+      <div id="liveBox" class="hidden">
+        <div id="liveState" class="scanstate"></div>
+        <div class="bar"><i id="liveBar"></i></div>
+        <p id="liveStats" class="note"></p>
+        <button id="liveStop" class="mini">Stop</button>
+      </div>
+      <p class="note">The live view is a quick preview and drifts a little. When you press Finish, COLMAP (if installed) re-builds the same footage for the accurate room size, and the page reloads with the result.</p>
+    </section>
+
+    <section id="scanSec">
+      <h2>Accurate scan from photos or a video (COLMAP)</h2>
+      <label class="file" id="scanDrop"><input type="file" id="scanFiles" accept="video/*,image/*" multiple><span>Choose a video or photos of the room, or drag and drop them here</span></label>
+      <label class="file"><input type="file" id="scanCap" accept="video/*" capture="environment"><span>Record with this device's camera app</span></label>
+      <div id="recRow">
+        <div class="trio two"><button id="recStart">Record in the browser</button><button id="recStop" disabled>Stop recording</button></div>
+        <video id="recVideo" muted playsinline></video>
+      </div>
+      <p id="fileInfo" class="note"></p>
+      <div class="dims two">
+        <label>Longest wall (m)<input id="scanW" type="number" min="1" step="0.1" placeholder="e.g. 6.2"></label>
+        <label>COLMAP path (if needed)<input id="colmapPath" type="text" placeholder="C:\colmap\COLMAP.bat"></label>
+      </div>
+      <button id="scanStart" class="wideBtn solid">Start 3D reconstruction</button>
+      <div id="scanBox" class="hidden">
+        <div id="scanState" class="scanstate"></div>
+        <div class="bar"><i id="scanBar"></i></div>
+        <pre id="scanLog"></pre>
+        <button id="scanCancel" class="mini">Cancel</button>
+      </div>
+      <p class="note">Walk slowly along the walls, then do a second loop. The reconstruction runs on this computer and the page reloads with the real room when it finishes.</p>
+    </section>
+
+    <section>
+      <h2>Disaster engine</h2>
+      <div class="btns" id="disasters">
+        <button data-kind="fire">Fire</button>
+        <button data-kind="gas">Gas leak</button>
+        <button data-kind="flood">Flood</button>
+        <button data-kind="earthquake">Earthquake</button>
+      </div>
+      <div class="row">
+        <span>Scenario</span>
+        <div class="scen"><select id="scenSel"></select><button id="scenRun">Run</button></div>
+      </div>
+      <label class="row check"><span>Alarm sound</span><input type="checkbox" id="sound" checked></label>
+      <div class="row">
+        <span>Speed</span>
+        <div class="seg" id="segSpeed"><button data-s="1">1×</button><button data-s="2">2×</button><button data-s="4">4×</button></div>
+      </div>
+      <div class="row">
+        <span>Occupants</span>
+        <div class="stepper"><button id="occDown">−</button><b id="occN">6</b><button id="occUp">+</button></div>
+      </div>
+      <button id="reset" class="wideBtn">Reset twin</button>
+    </section>
+
+    <section>
+      <h2>Will it fit?</h2>
+      <div id="placeForm">
+        <label class="file"><input type="file" id="objImg" accept="image/*"><span>Choose a photo of the object</span></label>
+        <img id="objPreview" class="preview" alt="">
+        <input id="objName" class="txt" placeholder="Name, e.g. Sofa" maxlength="40">
+        <div class="dims">
+          <label>Width<input id="objW" type="number" min="1" placeholder="cm"></label>
+          <label>Height<input id="objH" type="number" min="1" placeholder="cm"></label>
+          <label>Depth<input id="objD" type="number" min="1" placeholder="cm"></label>
+        </div>
+        <p class="note">Enter the real size in cm. A photo cannot give true size, so height is only guessed from its shape.</p>
+        <button id="objPlace" class="wideBtn solid">Place in room</button>
+      </div>
+      <div id="placeBar" class="hidden">
+        <p class="note">Click the floor to move it. Press R to rotate.</p>
+        <div id="fitReport" class="fit"></div>
+        <div class="trio"><button id="objRotate">Rotate</button><button id="objConfirm" class="go">Place</button><button id="objCancel">Cancel</button></div>
+      </div>
+      <div id="objList"></div>
+    </section>
+
+    <section>
+      <h2>Evacuation</h2>
+      <div class="stats">
+        <div><b id="stOut">0</b><span>out</span></div>
+        <div><b id="stMove">0</b><span>moving</span></div>
+        <div><b id="stStuck">0</b><span>stuck</span></div>
+        <div><b id="stHurt">0</b><span>down</span></div>
+      </div>
+      <div class="row"><span id="timeLabel">Estimated time left</span><b id="stTime">--</b></div>
+      <div id="exits" class="exits"></div>
+      <button id="report" class="wideBtn">Download report (CSV)</button>
+    </section>
+
+    <section>
+      <details id="setup">
+        <summary>Room setup</summary>
+        <div class="dims">
+          <label>Width m<input id="setW" type="number" min="2" step="0.5"></label>
+          <label>Depth m<input id="setD" type="number" min="2" step="0.5"></label>
+          <label>Height m<input id="setH" type="number" min="2" step="0.1"></label>
+        </div>
+        <p class="note">Exits (position is measured along the wall, in metres)</p>
+        <div id="exitRows"></div>
+        <button id="exitAdd" class="mini">Add exit</button>
+        <p class="note">Sensor positions (metres from the north-west corner)</p>
+        <div class="dims4">
+          <label>ESP32 x<input id="e32x" type="number" step="0.1"></label>
+          <label>z<input id="e32z" type="number" step="0.1"></label>
+          <label>PIR x<input id="pirx" type="number" step="0.1"></label>
+          <label>z<input id="pirz" type="number" step="0.1"></label>
+        </div>
+        <p class="note">Sizes round up to 0.5 m. Use "Will it fit?" to add your real furniture.</p>
+        <div class="trio two"><button id="setupSave" class="go">Save room</button><button id="setupDefault">Example room</button></div>
+      </details>
+    </section>
+
+    <section>
+      <h2>Event log</h2>
+      <ul id="log" class="log"></ul>
+    </section>
+
+  </aside>
+</main>
+
+<script src="/static/vendor/three.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+{
+  "width": 4.57,
+  "depth": 6.2,
+  "height": 4.66,
+  "exits": [
+    {
+      "id": "A",
+      "name": "Door A",
+      "side": "south",
+      "pos": 0.91,
+      "width": 1.0
+    },
+    {
+      "id": "B",
+      "name": "Door B",
+      "side": "east",
+      "pos": 3.1,
+      "width": 1.0
+    }
+  ],
+  "furniture": [],
+  "sensors": {
+    "esp32": {
+      "x": 3.57,
+      "z": 0.8
+    },
+    "pir": {
+      "x": 3.2,
+      "z": 2.48,
+      "radius": 1.4
+    }
+  }
+}
